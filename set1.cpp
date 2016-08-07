@@ -5,16 +5,18 @@ using namespace std;
 
 template<typename T>
 ostream& operator<<(ostream &o, const vector<T>& vec) {
-	o << '[';
 	for (auto x: vec) {
-		o << x << ' ';
+		o << x;
 	}
-	o << ']';
 	return o;
 }
 
 using Byte = uint8_t;
 using Bytes = vector<Byte>;
+
+constexpr char kHexTable[] = "0123456789ABCDEF";
+constexpr char kB64Table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+constexpr char kB64Padding = '=';
 
 inline
 Byte hexToDecimal(char ch) {
@@ -31,22 +33,17 @@ Byte hexToDecimal(char ch) {
 	return (1 << 4);
 }
 
+// Assumes correct string(even length, hex digits)
 Bytes hexToBytes(const string& hexString) {
 	Bytes result;
 
 	int hexLength = hexString.length();
-	int startIndex = 0;
 
-	if (hexLength & 1) {
-		// We have odd number of hex digits. We pad with one leading 0.
-		result.push_back(hexToDecimal(hexString[0]));
-		startIndex = 1;
-	}
-
-	for (int i = startIndex; i < hexLength; i += 2) {
+	for (int i = 1; i < hexLength; i += 2) {
 		result.push_back(
-			(hexToDecimal(hexString[i]) << 4) | hexToDecimal(hexString[i + 1]));
+			(hexToDecimal(hexString[i - 1]) << 4) | hexToDecimal(hexString[i]));
 	}
+
 	return result;
 }
 
@@ -54,21 +51,37 @@ string bytesToBase64(const Bytes& bytes) {
 	string result;
 
 	int numBytes = bytes.size();
-	int startIndex = 0;
 
-	if (numBytes % 3 != 0) {
-		// Wee need 3 bytes for 4 b64 digits. We pad as needed.
-		uint32_t firstChunk = 0;
-		for (int i = 0; i < numBytes % 3; i += 1) {
-			firstChunk = (firstDigit << 8) | bytes[i];
+	for (int i = 0; i < numBytes; i += 3) {
+		uint32_t chunk = (bytes[i] >> 2);
+
+		result.push_back(kB64Table[chunk]);
+
+		chunk = ((bytes[i] & 3) << 4);
+
+		if (i + 1 < numBytes) {
+			chunk |= (bytes[i + 1] >> 4);
+			result.push_back(kB64Table[chunk]);
+
+			chunk = ((bytes[i + 1] & 0x0F) << 2);
+
+			if (i + 2 < numBytes) {
+				chunk |= (bytes[i + 2] >> 6);
+				result.push_back(kB64Table[chunk]);
+
+				chunk = (bytes[i + 2] & 0x3F);
+				result.push_back(kB64Table[chunk]);
+			} else {
+				result.push_back(kB64Table[chunk]);
+				result.push_back(kB64Padding);
+			}
+		} else {
+			result.push_back(kB64Table[chunk]);
+			result.push_back(kB64Padding);
 		}
-		startIndex = numBytes % 3;
 	}
 
-	for (int i = startIndex; i < numBytes; i += 3) {
-		uint32_t chunk = (numBytes[i] << 16) | (numBytes[i + 1] << 8) | numBytes[i + 2];
-
-	}
+	return result;
 }
 
 
@@ -77,6 +90,9 @@ void challange1() {
 
 	Bytes bytes = hexToBytes(test);
 	cout << bytes << endl;
+
+	string result = bytesToBase64(bytes);
+	cout << result << endl;
 }
 
 int main() {
