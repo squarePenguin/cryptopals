@@ -1,6 +1,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -22,6 +23,7 @@ using Bytes = vector<Byte>;
 constexpr char kHexTable[] = "0123456789abcdef";
 constexpr char kB64Table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 constexpr char kB64Padding = '=';
+constexpr int INF = (1 << 30);
 
 inline
 Byte hexToDecimal(char ch) {
@@ -100,6 +102,16 @@ string bytesToBase64(const Bytes& bytes) {
 	return result;
 }
 
+// Bytes base64ToBytes(const string& b64) {
+// 	Bytes result;
+// 	int len = b64.length();
+
+// 	for (int i = 0; i < len; i += 4) {
+// 		uint32_t chunk;
+// 		chunk |=
+// 	}
+// }
+
 inline
 Bytes xorBytes(const Bytes& b1, const Bytes& b2) {
 	Bytes result;
@@ -116,6 +128,19 @@ Bytes xorBytes(const Bytes &bytes, Byte xorByte) {
 	Bytes result;
 	for (auto byte: bytes) {
 		result.push_back(byte ^ xorByte);
+	}
+	return result;
+}
+
+inline Bytes reapeatKeyXor(const Bytes &bytes, const Bytes &key) {
+	Bytes result;
+	auto keyIt = key.begin();
+
+	for (auto byte: bytes) {
+		result.push_back(byte ^ (*keyIt));
+		if (++keyIt == key.end()) {
+			keyIt = key.begin();
+		}
 	}
 	return result;
 }
@@ -160,6 +185,33 @@ double englishScore(const Bytes& text) {
 		}
 	}
 	return score;
+}
+
+inline
+int hammingDist(Byte a, Byte b) {
+	return __builtin_popcount(a ^ b);
+}
+
+inline
+int hammingDist(const Bytes &b1, const Bytes &b2) {
+	int result = 0;
+
+	auto b2Iter = b2.begin();
+	for (auto b: b1) {
+		if (b2Iter != b2.end()) {
+			result += hammingDist(b, (*b2Iter));
+			++b2Iter;
+		} else {
+			result += hammingDist(b, Byte(0));
+		}
+	}
+
+	while (b2Iter != b2.end()) {
+		result += hammingDist(Byte(0), (*b2Iter));
+		++b2Iter;
+	}
+
+	return result;
 }
 
 
@@ -207,6 +259,7 @@ void challange2() {
 
 void challange3() {
 	static const string input = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+	static const string expected = "Cooking MC's like a pound of bacon";
 
 	Bytes result;
 	double bestScore = -1;
@@ -222,12 +275,92 @@ void challange3() {
 		}
 	}
 
-	cout << result << endl;
+	string resultString(result.begin(), result.end());
+
+	cout << "Challange 3 ";
+
+	if (resultString == expected) {
+		cout << "passed!" << endl;
+	} else {
+		cout << "failed!" << endl;
+	}
+}
+
+void challange4() {
+	static const string expected = "Now that the party is jumping\n";
+	Bytes result;
+	double bestScore = -1;
+
+	ifstream fin("challange4.in");
+	string input;
+
+	while (fin >> input) {
+		Bytes bytes = hexToBytes(input);
+
+		for (int i = 0; i < numeric_limits<uint8_t>::max(); i += 1) {
+			Bytes xored = xorBytes(bytes, i);
+			double score = englishScore(xored);
+			if (score > bestScore) {
+				bestScore = score;
+				result = move(xored);
+			}
+		}
+	}
+
+	string resultString(result.begin(), result.end());
+	cout << "Challange 4 ";
+
+	if (resultString == expected) {
+		cout << "passed!" << endl;
+	} else {
+		cout << "failed!" << endl;
+	}
+}
+
+void challange5() {
+	static const string text = "Burning 'em, if you ain't quick and nimble\n"
+							   "I go crazy when I hear a cymbal";
+	static const string key = "ICE";
+	static const string expected = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272"
+								   "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
+
+	Bytes inputKey(key.begin(), key.end());
+
+	string result = bytesToHex(reapeatKeyXor(Bytes(text.begin(), text.end()), inputKey));
+
+	cout << "Challange 5 ";
+
+	if (result == expected) {
+		cout << "passed!" << endl;
+	} else {
+		cout << "failed!" << endl;
+	}
+}
+
+void challange6() {
+	static constexpr int MAX_KEYSIZE = 40;
+
+	ifstream fin("challange6.in");
+	 // b64input;
+
+	string b64line;
+	while (fin >> b64line) {
+	}
+
+	int keySize = 0;
+	int keySizeBest = INF;
+
+	for (int i = 2; i <= MAX_KEYSIZE; i += 1) {
+
+	}
 }
 
 int main() {
 	challange1();
 	challange2();
 	challange3();
+	challange4();
+	challange5();
+	challange6();
 	return 0;
 }
